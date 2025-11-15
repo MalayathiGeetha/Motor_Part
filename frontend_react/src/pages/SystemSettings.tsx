@@ -48,8 +48,22 @@ const SystemSettings = () => {
     },
   ]);
   const [isSaving, setIsSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const role = localStorage.getItem('role');
 
   useEffect(() => {
+    // Check role access first
+    if (!role) {
+      window.location.href = '/login';
+      return;
+    }
+    if (!['SHOP_OWNER', 'SYSTEM_ADMIN'].includes(role)) {
+      toast.error('Access denied');
+      window.location.href = '/dashboard';
+      return;
+    }
+    
     fetchSettings();
   }, []);
 
@@ -57,16 +71,22 @@ const SystemSettings = () => {
     try {
       const response = await api.get('/settings');
       // Update settings with fetched values
-      if (response.data) {
+      if (response.data && response.data.length > 0) {
         setSettings(prevSettings =>
-          prevSettings.map(setting => ({
-            ...setting,
-            value: response.data[setting.key] || setting.value,
-          }))
+          prevSettings.map(setting => {
+            const fetchedSetting = response.data.find((s: any) => s.key === setting.key);
+            return {
+              ...setting,
+              value: fetchedSetting?.value || setting.value,
+            };
+          })
         );
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
+      toast.error('Failed to load settings');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -84,13 +104,31 @@ const SystemSettings = () => {
 
       await api.put('/settings', settingsObject);
       toast.success('Settings saved successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving settings:', error);
-      toast.error('Failed to save settings');
+      if (error.response?.status === 403) {
+        toast.error('Access denied. Only Shop Owners and System Admins can modify settings.');
+      } else {
+        toast.error('Failed to save settings');
+      }
     } finally {
       setIsSaving(false);
     }
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Settings className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-muted-foreground">Loading settings...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -125,6 +163,7 @@ const SystemSettings = () => {
                     value={setting.value}
                     onChange={(e) => handleChange(setting.key, e.target.value)}
                     step={setting.type === 'number' ? '0.01' : undefined}
+                    min={setting.type === 'number' ? '0' : undefined}
                   />
                 </div>
               </CardContent>

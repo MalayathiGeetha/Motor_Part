@@ -51,22 +51,34 @@ public class AuthService {
      * Authenticates an existing user and returns a JWT with the user's role.
      */
     public AuthResponse authenticate(AuthRequest request) {
-        // 1. Authenticate the user (throws exception if password/username is wrong)
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
+        try {
+            System.out.println("🔐 Login attempt for: " + request.getEmail());
+            System.out.println("📝 Password length: " + (request.getPassword() != null ? request.getPassword().length() : "null"));
 
-        // 2. Retrieve the full User object to get the role
-        var user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found after successful authentication."));
+            // 1. Authenticate the user
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
+            System.out.println("✅ Authentication successful");
 
-        // 3. Generate JWT
-        var jwtToken = jwtService.generateToken(user);
+            // 2. Retrieve the full User object
+            var user = userRepository.findByEmail(request.getEmail())
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found after successful authentication."));
+            System.out.println("👤 User found: " + user.getEmail() + " with role: " + user.getRole());
 
-        // 🚨 FIX: Return the token AND the role
-        return AuthResponse.builder()
-                .token(jwtToken)
-                .role(user.getRole()) // Now includes the required role!
-                .build();
+            // 3. Generate JWT
+            var jwtToken = jwtService.generateToken(user);
+            System.out.println("🎫 JWT generated successfully");
+
+            return AuthResponse.builder()
+                    .token(jwtToken)
+                    .role(user.getRole())
+                    .build();
+
+        } catch (Exception e) {
+            System.out.println("❌ Authentication failed: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Login failed: " + e.getMessage());
+        }
     }
 }

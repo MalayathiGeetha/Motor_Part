@@ -10,6 +10,10 @@ public interface InventoryAlertRepository extends JpaRepository<InventoryAlert, 
     // Custom query to find existing OPEN alerts for a specific part
     List<InventoryAlert> findByPartIdAndStatus(Long partId, AlertStatus status);
 
+    long countByStatus(AlertStatus status);
+
+
+
     // Query for the Shop Owner/Manager to view all currently open alerts
     List<InventoryAlert> findByStatusOrderByDetectedAtDesc(AlertStatus status);
 }

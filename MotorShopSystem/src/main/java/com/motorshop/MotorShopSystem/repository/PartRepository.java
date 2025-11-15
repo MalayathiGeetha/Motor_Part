@@ -28,4 +28,6 @@ public interface PartRepository extends JpaRepository<Part, Long> {
 
 
     List<Part> findByCurrentStockLessThanEqual(Integer threshold);
+    boolean existsByPartCode(String partCode);
+
 }

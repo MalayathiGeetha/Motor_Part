@@ -1,46 +1,39 @@
-// com.motorshop.MotorShopSystem.models.AuditLog.java
-
 package com.motorshop.MotorShopSystem.models;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+
 import java.time.LocalDateTime;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "audit_log")
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class AuditLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Matches your database column "action_type"
+    @Column(name = "action_type", nullable = false)
+    private String actionType;
+
+    // Matches database column "details"
+    @Column(columnDefinition = "TEXT")
+    private String details;
+
+    @Column(name = "entity_id")
+    private Long entityId;
+
+    @Column(name = "entity_type")
+    private String entityType;
+
     @Column(nullable = false)
     private LocalDateTime timestamp;
 
     @Column(nullable = false)
-    private String username; // The user who performed the action
-
-    @Column(nullable = false)
-    private String actionType; // e.g., INVENTORY_UPDATE, USER_ROLE_CHANGE, SALE_CREATED
-
-    private String entityType; // e.g., PART, USER, PURCHASE_ORDER
-
-    private Long entityId; // The ID of the affected entity
-
-    @Column(columnDefinition = "TEXT")
-    private String details; // A detailed description of the change
-
-    @PrePersist
-    protected void onCreate() {
-        if (timestamp == null) {
-            timestamp = LocalDateTime.now();
-        }
-    }
+    private String username;
 }

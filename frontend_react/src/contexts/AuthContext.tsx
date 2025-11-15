@@ -10,7 +10,8 @@ export type UserRole =
   | 'SALES_EXECUTIVE'
   | 'SYSTEM_ADMIN'
   | 'AUDITOR'
-  | 'VENDOR';
+  | 'VENDOR'
+   | 'CUSTOMER';
 
 interface User {
   id: string;
@@ -56,32 +57,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
-  try {
-    const response = await api.post('/auth/login', { email, password });
-    const { token, role } = response.data;
+    try {
+      const response = await api.post('/auth/login', { email, password });
+      const { token, role } = response.data;
 
-    localStorage.setItem('token', token);
-    localStorage.setItem('role', role);
+      localStorage.setItem('token', token);
+      localStorage.setItem('role', role);
 
-    // Decode token only for ID/email — role comes from backend
-    const decoded: any = jwtDecode(token);
-    const userData: User = {
-      id: decoded.sub,
-      email: decoded.email || email,
-      name: decoded.name || email.split('@')[0],
-      role: role, // ✅ use backend-provided role here
-    };
+      // Decode token only for ID/email — role comes from backend
+      const decoded: any = jwtDecode(token);
+      const userData: User = {
+        id: decoded.sub,
+        email: decoded.email || email,
+        name: decoded.name || email.split('@')[0],
+        role: role, // ✅ use backend-provided role here
+      };
 
-    setUser(userData);
-    toast.success('Welcome back!');
+      setUser(userData);
+      toast.success('Welcome back!');
 
-    // Navigate to appropriate dashboard
-    navigate(getDashboardRoute(role));
-  } catch (error: any) {
-    toast.error(error.response?.data?.message || 'Login failed');
-    throw error;
-  }
-};
+      // Navigate to appropriate dashboard
+      navigate(getDashboardRoute(role));
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Login failed');
+      throw error;
+    }
+  };
 
   const register = async (email: string, password: string, name: string, role: UserRole) => {
     try {
@@ -111,11 +112,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const getDashboardRoute = (role: UserRole): string => {
     switch (role) {
       case 'VENDOR':
-        return '/vendor-portal';
+        return '/dashboard';
       case 'AUDITOR':
-        return '/audit-logs';
+        return '/dashboard'; // Auditor can access dashboard for overview
       case 'SALES_EXECUTIVE':
         return '/sales-terminal';
+      case 'CUSTOMER':
+        return '/customer-dashboard'; 
       default:
         return '/dashboard';
     }

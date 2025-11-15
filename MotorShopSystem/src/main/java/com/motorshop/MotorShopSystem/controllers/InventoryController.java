@@ -1,8 +1,12 @@
 package com.motorshop.MotorShopSystem.controllers;
 
+import com.motorshop.MotorShopSystem.auth.AuditLogResponse;
 import com.motorshop.MotorShopSystem.auth.PartRequest;
 import com.motorshop.MotorShopSystem.auth.PartResponse;
+import com.motorshop.MotorShopSystem.auth.StockLogResponse;
+import com.motorshop.MotorShopSystem.models.AuditLog;
 import com.motorshop.MotorShopSystem.models.Part;
+import com.motorshop.MotorShopSystem.repository.AuditLogRepository;
 import com.motorshop.MotorShopSystem.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/inventory")
@@ -20,6 +25,7 @@ import java.util.Map;
 public class InventoryController {
 
     private final InventoryService inventoryService;
+    private final AuditLogRepository auditLogRepository;
 
 
     @PostMapping("/part")
@@ -102,6 +108,44 @@ public class InventoryController {
         PartResponse part = inventoryService.reorderPart(id, quantity);
         return ResponseEntity.ok("Purchase order created for " + part.getPartName());
     }
+
+
+
+
+    @GetMapping("/part/{partId}/audit")
+    @PreAuthorize("hasAnyRole('INVENTORY_MANAGER', 'SHOP_OWNER', 'SYSTEM_ADMIN')")
+    public ResponseEntity<List<AuditLogResponse>> getPartAuditLogs(@PathVariable Long partId) {
+        try {
+            List<AuditLog> auditLogs =
+                    auditLogRepository.findByEntityTypeAndEntityIdOrderByTimestampDesc("PART", partId);
+
+            List<AuditLogResponse> response = auditLogs.stream()
+                    .map(log -> {
+                        AuditLogResponse resp = new AuditLogResponse();
+                        resp.setId(log.getId());
+                        resp.setTimestamp(log.getTimestamp().toString());
+                        resp.setActionType(log.getActionType());    // FIXED
+                        resp.setDetails(log.getDetails());          // FIXED
+                        resp.setPerformedBy(log.getUsername());     // FIXED
+                        return resp;
+                    })
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of());
+        }
+    }
+
+
+    @GetMapping("/stats")
+    @PreAuthorize("hasAnyRole('SHOP_OWNER','INVENTORY_MANAGER','SYSTEM_ADMIN')")
+    public ResponseEntity<Map<String, Object>> getInventoryStats() {
+        Map<String, Object> stats = inventoryService.getInventoryStats();
+        return ResponseEntity.ok(stats);
+    }
+
 
 
 }

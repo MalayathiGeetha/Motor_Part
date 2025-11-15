@@ -1,7 +1,6 @@
 package com.motorshop.MotorShopSystem.service;
 
-import com.motorshop.MotorShopSystem.auth.PurchaseOrderRequest;
-import com.motorshop.MotorShopSystem.auth.VendorRequest;
+import com.motorshop.MotorShopSystem.auth.*;
 import com.motorshop.MotorShopSystem.models.*;
 import com.motorshop.MotorShopSystem.models.PurchaseOrder.OrderStatus;
 import com.motorshop.MotorShopSystem.repository.PartRepository;
@@ -16,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -120,7 +120,49 @@ public class VendorService {
         return purchaseOrderRepository.save(po);
     }
 
-    public List<PurchaseOrder> getOrderHistory() {
-        return purchaseOrderRepository.findAll();
+    @Transactional(readOnly = true)
+    public List<PurchaseOrderResponse> getOrderHistory() {
+        List<PurchaseOrder> orders = purchaseOrderRepository.findAll();
+
+        return orders.stream().map(order -> {
+            PurchaseOrderResponse response = new PurchaseOrderResponse();
+            response.setId(order.getId());
+            response.setOrderNumber(order.getOrderNumber());
+            response.setOrderDate(order.getOrderDate());
+            response.setExpectedDeliveryDate(order.getExpectedDeliveryDate());
+            response.setActualDeliveryDate(order.getActualDeliveryDate());
+            response.setTotalOrderValue(order.getTotalOrderValue());
+            response.setStatus(order.getStatus().name());
+            response.setPlacedBy(order.getPlacedBy());
+
+            // Set vendor
+            if (order.getVendor() != null) {
+                VendorResponse vendorResponse = new VendorResponse();
+                vendorResponse.setId(order.getVendor().getId());
+                vendorResponse.setVendorName(order.getVendor().getVendorName());
+                vendorResponse.setContactPerson(order.getVendor().getContactPerson());
+                vendorResponse.setEmail(order.getVendor().getEmail());
+                vendorResponse.setPhoneNumber(order.getVendor().getPhoneNumber());
+                vendorResponse.setAddress(order.getVendor().getAddress());
+                vendorResponse.setStatus(order.getVendor().getStatus());
+                response.setVendor(vendorResponse);
+            }
+
+            // Set items
+            if (order.getItems() != null) {
+                List<PurchaseOrderItemResponse> itemResponses = order.getItems().stream().map(item -> {
+                    PurchaseOrderItemResponse itemResponse = new PurchaseOrderItemResponse();
+                    itemResponse.setId(item.getId());
+                    itemResponse.setPartName(item.getPart().getPartName());
+                    itemResponse.setQuantityOrdered(item.getQuantityOrdered());
+                    itemResponse.setUnitCost(item.getUnitCost());
+                    itemResponse.setLineTotal(item.getLineTotal());
+                    return itemResponse;
+                }).collect(Collectors.toList());
+                response.setItems(itemResponses);
+            }
+
+            return response;
+        }).collect(Collectors.toList());
     }
 }

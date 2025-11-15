@@ -34,6 +34,7 @@ const Register = () => {
   };
 
   const roles: { value: UserRole; label: string }[] = [
+  { value: 'CUSTOMER', label: 'Customer' },
     { value: 'SHOP_OWNER', label: 'Shop Owner' },
     { value: 'INVENTORY_MANAGER', label: 'Inventory Manager' },
     { value: 'SALES_EXECUTIVE', label: 'Sales Executive' },

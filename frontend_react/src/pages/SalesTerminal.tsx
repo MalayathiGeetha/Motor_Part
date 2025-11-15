@@ -14,7 +14,7 @@ interface Part {
   partName: string;
   description: string;
   unitPrice: number;
-  stockLevel: number;
+  currentStock: number;
   imageUrl?: string;
   rackLocation?: string;
 }
@@ -37,6 +37,9 @@ const SalesTerminal = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [taxRate] = useState(0.08);
+  const [selectedPart, setSelectedPart] = useState<Part | null>(null);
+const [showDetails, setShowDetails] = useState(false);
+
 
   const [dailySummary, setDailySummary] = useState<DailySummary>({
     totalRevenue: 0,
@@ -106,30 +109,74 @@ const fetchAllParts = async () => {
   };
 
   const addToCart = (part: Part) => {
-    const existing = cart.find((i) => i.id === part.id);
-    if (existing) {
-      if (existing.quantity >= part.stockLevel) return toast.error('Not enough stock available');
-      setCart(cart.map((i) => (i.id === part.id ? { ...i, quantity: i.quantity + 1 } : i)));
-    } else {
-      setCart([...cart, { ...part, quantity: 1 }]);
-    }
-    toast.success('Added to cart');
-  };
+  const existing = cart.find((i) => i.id === part.id);
+
+  if (existing) {
+    if (existing.quantity >= part.currentStock)
+      return toast.error('Not enough stock available');
+
+    // Increase quantity
+    setCart(cart.map((i) =>
+      i.id === part.id ? { ...i, quantity: i.quantity + 1 } : i
+    ));
+
+    // Reduce stock in parts list
+    setParts(parts.map((p) =>
+      p.id === part.id ? { ...p, currentStock: p.currentStock - 1 } : p
+    ));
+
+  } else {
+    if (part.currentStock <= 0)
+      return toast.error('Out of stock');
+
+    setCart([...cart, { ...part, quantity: 1 }]);
+
+    setParts(parts.map((p) =>
+      p.id === part.id ? { ...p, currentStock: p.currentStock - 1 } : p
+    ));
+  }
+
+  toast.success('Added to cart');
+};
+
 
   const updateQuantity = (id: string, change: number) => {
-    setCart(cart.map((item) => {
-      if (item.id === id) {
-        const q = item.quantity + change;
-        if (q <= 0) return item;
-        if (q > item.stockLevel) {
-          toast.error('Not enough stock');
-          return item;
-        }
-        return { ...item, quantity: q };
-      }
-      return item;
-    }));
-  };
+  const cartItem = cart.find((item) => item.id === id);
+  if (!cartItem) return;
+
+  const part = parts.find((p) => p.id === id);
+  if (!part) return;
+
+  if (change === 1) {
+    if (part.currentStock <= 0)
+      return toast.error('Not enough stock');
+
+    // Increase cart quantity
+    setCart(cart.map((i) =>
+      i.id === id ? { ...i, quantity: i.quantity + 1 } : i
+    ));
+
+    // Reduce available stock
+    setParts(parts.map((p) =>
+      p.id === id ? { ...p, currentStock: p.currentStock - 1 } : p
+    ));
+  }
+
+  if (change === -1) {
+    if (cartItem.quantity === 1) return; // no negatives
+
+    // Decrease cart quantity
+    setCart(cart.map((i) =>
+      i.id === id ? { ...i, quantity: i.quantity - 1 } : i
+    ));
+
+    // Increase stock back
+    setParts(parts.map((p) =>
+      p.id === id ? { ...p, currentStock: p.currentStock + 1 } : p
+    ));
+  }
+};
+
 
   const removeFromCart = (id: string) => {
     setCart(cart.filter((item) => item.id !== id));
@@ -260,6 +307,40 @@ const fetchDailySummary = async () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
+        {/* PRODUCT DETAILS MODAL */}
+        <Dialog open={showDetails} onOpenChange={setShowDetails}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{selectedPart?.partName}</DialogTitle>
+            </DialogHeader>
+
+            {selectedPart && (
+              <div className="space-y-3">
+                <img
+                  src={selectedPart.imageUrl}
+                  alt={selectedPart.partName}
+                  className="w-full h-40 object-cover rounded-md"
+                />
+
+                <p><strong>Description:</strong> {selectedPart.description || 'No description'}</p>
+	        <p><strong>Stock:</strong> {selectedPart.currentStock}</p>
+	        <p><strong>Price:</strong> ${selectedPart.unitPrice.toFixed(2)}</p>
+
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    addToCart(selectedPart);
+                    setShowDetails(false);
+                  }}
+                >
+                  Add to Cart
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+        
+        
           <div>
             <h1 className="text-3xl font-bold">Sales Terminal</h1>
             <p className="text-muted-foreground mt-1">Search and add parts to complete a sale</p>
@@ -306,7 +387,15 @@ const fetchDailySummary = async () => {
 
             <div className="grid gap-4 md:grid-cols-2">
               {parts.map((p) => (
-                <Card key={p.id} className="shadow-card hover:shadow-glow transition-shadow">
+                <Card 
+		   key={p.id} 
+		   className="shadow-card hover:shadow-glow transition-shadow cursor-pointer"
+		   onClick={() => {
+		      setSelectedPart(p);
+		      setShowDetails(true);
+		   }}
+		>
+
                   <CardContent className="p-4">
                     <div className="flex gap-4">
                       <div className="h-20 w-20 bg-muted flex items-center justify-center overflow-hidden rounded-lg">
@@ -321,18 +410,19 @@ const fetchDailySummary = async () => {
                         <p className="text-sm text-muted-foreground truncate">{p.description}</p>
                         <div className="flex items-center justify-between mt-2">
                           <span className="font-bold">${p.unitPrice.toFixed(2)}</span>
-                          <Badge variant={p.stockLevel > 10 ? 'default' : 'destructive'}>
-                            {p.stockLevel} in stock
-                          </Badge>
+                          {p.currentStock <= 0 ? (
+			  <Badge variant="destructive">Out of stock</Badge>
+			) : (
+			  <Badge variant={p.currentStock > 10 ? 'default' : 'destructive'}>
+			    {p.currentStock} in stock
+			  </Badge>
+			)}
+
                         </div>
-                        <Button
-                          size="sm"
-                          onClick={() => addToCart(p)}
-                          disabled={p.stockLevel === 0}
-                          className="w-full mt-2"
-                        >
-                          Add to Cart
-                        </Button>
+                        <Button size="sm" onClick={() => addToCart(p)} disabled={p.currentStock === 0}>
+			  Add to Cart
+			</Button>
+
                       </div>
                     </div>
                   </CardContent>
@@ -452,4 +542,9 @@ const fetchDailySummary = async () => {
 };
 
 export default SalesTerminal;
+
+
+
+
+
 

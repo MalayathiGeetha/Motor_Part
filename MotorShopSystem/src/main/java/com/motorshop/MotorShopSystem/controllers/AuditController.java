@@ -1,6 +1,5 @@
 package com.motorshop.MotorShopSystem.controllers;
 
-
 import com.motorshop.MotorShopSystem.models.AuditLog;
 import com.motorshop.MotorShopSystem.repository.AuditLogRepository;
 import org.springframework.data.domain.Page;
@@ -14,8 +13,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/audit")
-// Only the Auditor and System Admin should see all logs
-@PreAuthorize("hasAnyAuthority('AUDITOR', 'SYSTEM_ADMIN','SHOP_OWNER')")
+// Use hasRole instead of hasAuthority for consistency
+@PreAuthorize("hasAnyRole('AUDITOR', 'SYSTEM_ADMIN', 'SHOP_OWNER')")
 public class AuditController {
 
     private final AuditLogRepository auditRepository;
@@ -29,10 +28,8 @@ public class AuditController {
      */
     @GetMapping
     public ResponseEntity<Page<AuditLog>> getAllLogs(
-            // Default size of 20 logs per page, allowing customization via request
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        // Use the paging method provided by JpaRepository
         return ResponseEntity.ok(auditRepository.findAll(pageable));
     }
 

@@ -5,8 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Filter } from 'lucide-react';
-import api from '@/lib/api';
+import { FileText, Filter, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AuditLog {
@@ -26,6 +25,8 @@ const AuditLogs = () => {
   const [entityFilter, setEntityFilter] = useState<string>('all');
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(false);
 
   useEffect(() => {
     fetchLogs();
@@ -37,13 +38,81 @@ const AuditLogs = () => {
 
   const fetchLogs = async () => {
     try {
-      const response = await api.get('/audit');
-      setLogs(response.data);
+      setLoading(true);
+      setApiError(false);
+      
+      // Try to fetch from the correct API endpoint
+      const response = await api.get('/admin/audit').catch(() => {
+        // If API call fails, use mock data
+        throw new Error('API endpoint not available');
+      });
+      
+      setLogs(response.data.content || response.data); // Handle both pageable and array responses
+      
     } catch (error) {
       console.error('Error fetching audit logs:', error);
-      toast.error('Failed to load audit logs');
+      setApiError(true);
+      // Use mock data as fallback
+      const mockLogs = getMockAuditLogs();
+      setLogs(mockLogs);
+      toast.info('Using demo audit data');
+    } finally {
+      setLoading(false);
     }
   };
+
+  const getMockAuditLogs = (): AuditLog[] => [
+    {
+      id: '1',
+      timestamp: '2024-01-15T10:30:00Z',
+      userId: 'user1',
+      userName: 'John Doe',
+      action: 'CREATE',
+      entityType: 'PART',
+      entityId: 'PART-001',
+      details: 'Created new part: Oil Filter Z-10'
+    },
+    {
+      id: '2',
+      timestamp: '2024-01-15T11:15:00Z',
+      userId: 'user2',
+      userName: 'Jane Smith',
+      action: 'UPDATE',
+      entityType: 'INVENTORY',
+      entityId: 'INV-005',
+      details: 'Updated stock quantity from 50 to 45'
+    },
+    {
+      id: '3',
+      timestamp: '2024-01-15T14:20:00Z',
+      userId: 'user3',
+      userName: 'Mike Johnson',
+      action: 'DELETE',
+      entityType: 'USER',
+      entityId: 'USER-008',
+      details: 'Deleted user account: old-employee@company.com'
+    },
+    {
+      id: '4',
+      timestamp: '2024-01-15T16:45:00Z',
+      userId: 'user4',
+      userName: 'Sarah Wilson',
+      action: 'LOGIN',
+      entityType: 'SYSTEM',
+      entityId: 'AUTH-012',
+      details: 'Successful login from IP: 192.168.1.100'
+    },
+    {
+      id: '5',
+      timestamp: '2024-01-16T09:10:00Z',
+      userId: 'user1',
+      userName: 'John Doe',
+      action: 'CREATE',
+      entityType: 'SALE',
+      entityId: 'SALE-202',
+      details: 'Created new sale with total $250.00'
+    }
+  ];
 
   const filterLogs = () => {
     let filtered = [...logs];
@@ -69,27 +138,63 @@ const AuditLogs = () => {
 
   const getActionBadge = (action: string) => {
     const actionColors = {
-      CREATE: 'bg-success text-success-foreground',
-      UPDATE: 'bg-primary text-primary-foreground',
-      DELETE: 'bg-destructive text-destructive-foreground',
-      LOGIN: 'bg-accent text-accent-foreground',
+      CREATE: 'bg-green-500 text-white',
+      UPDATE: 'bg-blue-500 text-white',
+      DELETE: 'bg-red-500 text-white',
+      LOGIN: 'bg-purple-500 text-white',
+      VIEW: 'bg-gray-500 text-white',
     };
-    return <Badge className={actionColors[action as keyof typeof actionColors] || 'bg-muted'}>{action}</Badge>;
+    return <Badge className={actionColors[action as keyof typeof actionColors] || 'bg-gray-500 text-white'}>{action}</Badge>;
   };
 
-  const entityTypes = ['all', 'PART', 'SALE', 'VENDOR', 'PURCHASE_ORDER', 'USER'];
-  const actions = ['all', 'CREATE', 'UPDATE', 'DELETE', 'LOGIN'];
+  const entityTypes = ['all', 'PART', 'SALE', 'VENDOR', 'PURCHASE_ORDER', 'USER', 'INVENTORY', 'SYSTEM'];
+  const actions = ['all', 'CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'VIEW'];
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center py-40">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Audit Logs</h1>
-          <p className="text-muted-foreground mt-1">Track all system changes and user activities</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Audit Logs</h1>
+            <p className="text-muted-foreground mt-1">Track all system changes and user activities</p>
+          </div>
+          {apiError && (
+            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Using Demo Data
+            </Badge>
+          )}
         </div>
 
+        {/* Demo Data Notice */}
+        {apiError && (
+          <Card className="bg-yellow-50 border-yellow-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2" />
+                <div>
+                  <p className="text-yellow-800 font-medium">Demo Mode</p>
+                  <p className="text-yellow-700 text-sm">
+                    Using demo audit log data. Real API endpoints are not available.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Filters */}
-        <Card className="shadow-card">
+        <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Filter className="h-5 w-5" />
@@ -143,7 +248,7 @@ const AuditLogs = () => {
         </Card>
 
         {/* Logs Table */}
-        <Card className="shadow-card">
+        <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -164,22 +269,30 @@ const AuditLogs = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {new Date(log.timestamp).toLocaleString()}
+                  {filteredLogs.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No audit logs found matching your filters
                       </TableCell>
-                      <TableCell className="font-medium">{log.userName}</TableCell>
-                      <TableCell>{getActionBadge(log.action)}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{log.entityType}</Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {log.entityId.slice(0, 8)}...
-                      </TableCell>
-                      <TableCell className="max-w-md truncate">{log.details}</TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    filteredLogs.map((log) => (
+                      <TableRow key={log.id}>
+                        <TableCell className="whitespace-nowrap">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="font-medium">{log.userName}</TableCell>
+                        <TableCell>{getActionBadge(log.action)}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{log.entityType}</Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {log.entityId}
+                        </TableCell>
+                        <TableCell className="max-w-md">{log.details}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>

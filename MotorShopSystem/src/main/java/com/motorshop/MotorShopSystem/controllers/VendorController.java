@@ -1,6 +1,7 @@
 package com.motorshop.MotorShopSystem.controllers;
 
 import com.motorshop.MotorShopSystem.auth.PurchaseOrderRequest;
+import com.motorshop.MotorShopSystem.auth.PurchaseOrderResponse;
 import com.motorshop.MotorShopSystem.auth.VendorRequest;
 import com.motorshop.MotorShopSystem.models.PurchaseOrder;
 import com.motorshop.MotorShopSystem.models.Vendor;
@@ -27,7 +28,7 @@ public class VendorController {
      * ACCESS: Restricted to SHOP_OWNER and SYSTEM_ADMIN (high-level control).
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('SHOP_OWNER') or hasAuthority('SYSTEM_ADMIN')")
+    @PreAuthorize("hasAnyRole('SHOP_OWNER','SYSTEM_ADMIN')")
     public ResponseEntity<Vendor> createVendor(@RequestBody VendorRequest request) {
         Vendor vendor = vendorService.createVendor(request);
         return new ResponseEntity<>(vendor, HttpStatus.CREATED);
@@ -81,10 +82,9 @@ public class VendorController {
      */
     @GetMapping("/history")
     @PreAuthorize("hasAnyRole('SHOP_OWNER', 'INVENTORY_MANAGER', 'SYSTEM_ADMIN')")
-    public ResponseEntity<List<PurchaseOrder>> getOrderHistory() {
-        List<PurchaseOrder> history = vendorService.getOrderHistory();
+    public ResponseEntity<List<PurchaseOrderResponse>> getOrderHistory() {
+        List<PurchaseOrderResponse> history = vendorService.getOrderHistory();
         return ResponseEntity.ok(history);
     }
-
 
 }

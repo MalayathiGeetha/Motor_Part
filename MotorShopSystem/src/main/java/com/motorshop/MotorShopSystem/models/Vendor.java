@@ -1,5 +1,6 @@
 package com.motorshop.MotorShopSystem.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,6 +13,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Entity
 @Table(name = "vendor")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Vendor {
 
     @Id

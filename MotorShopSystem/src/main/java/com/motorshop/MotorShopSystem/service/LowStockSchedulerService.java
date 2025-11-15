@@ -1,4 +1,4 @@
-// com.motorshop.MotorShopSystem.service.LowStockSchedulerService.java (FINALIZED)
+// com.motorshop.MotorShopSystem.service.LowStockSchedulerService.java (CORRECTED)
 
 package com.motorshop.MotorShopSystem.service;
 
@@ -20,35 +20,36 @@ public class LowStockSchedulerService {
 
     private final PartRepository partRepository;
     private final InventoryAlertRepository alertRepository;
-    private final AuditService auditService; // ADDED: Inject AuditService
+    private final AuditService auditService;
 
     public LowStockSchedulerService(PartRepository partRepository,
                                     InventoryAlertRepository alertRepository,
-                                    AuditService auditService /* ADDED */) {
+                                    AuditService auditService) {
         this.partRepository = partRepository;
         this.alertRepository = alertRepository;
-        this.auditService = auditService; // Initialized
+        this.auditService = auditService;
     }
 
-    // Runs every hour (e.g., 0 minutes, 0 hours, every day)
-    @Scheduled(cron = "0 0 * * * *")
+    @Scheduled(cron = "0 0 * * * *") // every hour
     @Transactional
     public void checkLowStockAndGenerateAlerts() {
+
         System.out.println("Running individual part low stock check at: " + LocalDateTime.now());
 
         List<Part> allParts = partRepository.findAll();
 
         for (Part part : allParts) {
+
             int currentStock = part.getCurrentStock();
             int threshold = part.getReorderThreshold();
 
             if (currentStock <= threshold) {
 
-                List<InventoryAlert> existingAlerts = alertRepository.findByPartIdAndStatus(part.getId(), AlertStatus.OPEN);
+                List<InventoryAlert> existingAlerts =
+                        alertRepository.findByPartIdAndStatus(part.getId(), AlertStatus.OPEN);
 
                 if (existingAlerts.isEmpty()) {
 
-                    // Create a new alert
                     InventoryAlert newAlert = new InventoryAlert(
                             null,
                             part,
@@ -58,15 +59,24 @@ public class LowStockSchedulerService {
                             LocalDateTime.now(),
                             null
                     );
-                    alertRepository.save(newAlert);
-                    System.out.println("Generated new alert for part: " + part.getPartName() + " (Stock: " + currentStock + ")");
 
-                    // CRITICAL ADDITION: Log the alert creation in the audit system
+                    alertRepository.save(newAlert);
+
+                    System.out.println("Generated new alert for part: " +
+                            part.getPartName() + " (Stock: " + currentStock + ")");
+
+                    // ✅ CORRECTED AUDIT LOG CALL
                     auditService.logAction(
-                            "LOW_STOCK_ALERT",
-                            "PART",
-                            part.getId(),
-                            String.format("Alert generated. Stock: %d <= Threshold: %d.", currentStock, threshold)
+                            "LOW_STOCK_ALERT",              // action
+                            "Low stock alert generated",    // description
+                            "PART",                         // entityType
+                            part.getId(),                   // entityId
+                            null,                           // oldValue
+                            String.format(                  // newValue
+                                    "Stock %d <= Threshold %d",
+                                    currentStock,
+                                    threshold
+                            )
                     );
                 }
             }

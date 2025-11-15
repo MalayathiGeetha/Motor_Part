@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -14,17 +15,19 @@ import java.util.List;
 @AllArgsConstructor
 @Entity
 @Table(name = "purchase_order")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class PurchaseOrder {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String orderNumber; // Unique PO number
+    private String orderNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vendor_id", nullable = false)
-    private Vendor vendor; // The vendor this PO is addressed to
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Vendor vendor;
 
     private LocalDateTime orderDate;
     private LocalDateTime expectedDeliveryDate;
@@ -33,11 +36,12 @@ public class PurchaseOrder {
     private Double totalOrderValue;
 
     @Enumerated(EnumType.STRING)
-    private OrderStatus status; // e.g., PENDING, SHIPPED, RECEIVED, CANCELLED
+    private OrderStatus status;
 
-    private String placedBy; // Email or ID of the user (Shop Owner/Inventory Manager) who placed it
+    private String placedBy;
 
     @OneToMany(mappedBy = "purchaseOrder", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnoreProperties({"purchaseOrder", "hibernateLazyInitializer", "handler"})
     private List<PurchaseOrderItem> items;
 
     public enum OrderStatus {

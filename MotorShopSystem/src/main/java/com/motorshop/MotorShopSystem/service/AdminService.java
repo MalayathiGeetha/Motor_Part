@@ -1,13 +1,12 @@
 // com.motorshop.MotorShopSystem.service.AdminService.java (CORRECTED)
-
 package com.motorshop.MotorShopSystem.service;
 
 import com.motorshop.MotorShopSystem.models.User;
-import com.motorshop.MotorShopSystem.models.Role; // FIX: Missing Import
+import com.motorshop.MotorShopSystem.models.Role;
 import com.motorshop.MotorShopSystem.repository.UserRepository;
 import com.motorshop.MotorShopSystem.exceptions.ResourceNotFoundException;
 import com.motorshop.MotorShopSystem.auth.UpdateRoleRequest;
-import jakarta.persistence.EntityNotFoundException; // FIX: Missing Import
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +16,7 @@ import java.util.Optional;
 
 @Service
 public class AdminService {
+
     private final AuditService auditService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -27,7 +27,7 @@ public class AdminService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // --- READ OPERATIONS (CRUD) ---
+    // --- READ OPERATIONS ---
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
@@ -36,60 +36,61 @@ public class AdminService {
         return userRepository.findById(userId);
     }
 
-    // --- UPDATE OPERATIONS (CRUD) ---
-
+    // --- UPDATE USER DETAILS ---
     @Transactional
     public User updateUserDetails(Integer userId, User userDetails) {
+
         User existingUser = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
 
-        // Use a simple comparison/check to see if something changed for logging
-        String oldDetails = existingUser.toString(); // Simple way to capture old state
+        // capture old state
+        String oldDetails = existingUser.toString();
 
-        // Uses the updateDetails method in the User model
         existingUser.updateDetails(userDetails);
-
-        // Save the updated user
         User savedUser = userRepository.save(existingUser);
 
-        // 1. Log the update (Audit)
-        auditService.logAction("USER_DETAILS_UPDATE", "USER", userId.longValue(),
-                "Details updated. Old: [" + oldDetails + "], New: [" + savedUser.toString() + "]");
+        // AUDIT — Correct signature
+        auditService.logAction(
+                "USER_DETAILS_UPDATE",
+                "User details updated",
+                "USER",
+                userId.longValue(),
+                oldDetails,
+                savedUser.toString()
+        );
 
         return savedUser;
     }
 
-    @Transactional // Added @Transactional annotation for consistency
-    // FIX: Changed Long userId to Integer userId for consistency (assuming User ID is Integer)
+    // --- UPDATE USER ROLE ---
+    @Transactional
     public User updateUserRole(Integer userId, UpdateRoleRequest request) {
+
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId)); // Used ResourceNotFoundException for consistency
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
 
-        // Get old role for audit logging
         Role oldRole = user.getRole();
-
-        // Update the user's role
         user.setRole(request.getNewRole());
-        userRepository.save(user);
 
-        // --- AUDIT LOGGING ---
-        String details = String.format("Role changed from %s to %s for user: %s (ID: %d)",
-                oldRole, request.getNewRole(), user.getEmail(), userId);
+        User savedUser = userRepository.save(user);
 
-        // FIX: Changed userId to userId.longValue() to match AuditService signature
+        // AUDIT — Correct signature
         auditService.logAction(
                 "USER_ROLE_CHANGE",
+                "Role updated",
                 "USER",
                 userId.longValue(),
-                details
+                oldRole.toString(),
+                request.getNewRole().toString()
         );
-        // --- END AUDIT LOGGING ---
 
-        return user;
+        return savedUser;
     }
 
+    // --- RESET PASSWORD ---
     @Transactional
     public User resetPassword(Integer userId, String newPassword) {
+
         if (newPassword == null || newPassword.isBlank()) {
             throw new IllegalArgumentException("New password cannot be empty.");
         }
@@ -97,29 +98,43 @@ public class AdminService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
 
-        user.setPassword(passwordEncoder.encode(newPassword));
+        String oldValue = "Password (Encrypted)";
 
-        // Save the updated user
+        user.setPassword(passwordEncoder.encode(newPassword));
         User savedUser = userRepository.save(user);
 
-        // 1. Log the password reset (Audit)
-        auditService.logAction("USER_PASSWORD_RESET", "USER", userId.longValue(),
-                "Password reset successfully.");
+        // AUDIT — Correct signature
+        auditService.logAction(
+                "USER_PASSWORD_RESET",
+                "Password reset performed",
+                "USER",
+                userId.longValue(),
+                oldValue,
+                "Password Updated (Encrypted)"
+        );
 
         return savedUser;
     }
 
-    // --- DELETE OPERATION (CRUD) ---
-
+    // --- DELETE USER ---
     @Transactional
     public void deleteUser(Integer userId) {
+
         User userToDelete = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
 
+        String oldDetails = userToDelete.toString();
+
         userRepository.deleteById(userId);
 
-        // 1. Log the deletion (Audit)
-        auditService.logAction("USER_DELETED", "USER", userId.longValue(),
-                "User " + userToDelete.getEmail() + " deleted.");
+        // AUDIT — Correct signature
+        auditService.logAction(
+                "USER_DELETED",
+                "User deleted",
+                "USER",
+                userId.longValue(),
+                oldDetails,
+                null
+        );
     }
 }

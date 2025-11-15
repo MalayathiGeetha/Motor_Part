@@ -10,6 +10,7 @@ public enum Role {
     SALES_EXECUTIVE,
     SYSTEM_ADMIN,
     AUDITOR,
+    CUSTOMER,
 
     // External/Specific Roles
     VENDOR,

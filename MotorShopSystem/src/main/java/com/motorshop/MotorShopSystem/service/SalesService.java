@@ -104,13 +104,20 @@ public class SalesService {
         Sale savedSale = saleRepository.save(sale); // Save the main sale object
 
         // 6. CRITICAL FIX 1: LOG THE TRANSACTION
+        // 6. Log the sale transaction correctly
         auditService.logAction(
                 "SALE_COMPLETED",
+                "Sale transaction successfully recorded",
                 "SALE",
                 savedSale.getId(),
-                String.format("Invoice %s processed. Grand Total: %.2f.",
-                        savedSale.getInvoiceNumber(), savedSale.getGrandTotal())
+                null,
+                String.format(
+                        "Invoice %s processed. Grand Total: %.2f",
+                        savedSale.getInvoiceNumber(),
+                        savedSale.getGrandTotal()
+                )
         );
+
 
         return savedSale;
     }

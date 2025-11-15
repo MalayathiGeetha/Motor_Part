@@ -36,31 +36,49 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // ✅ Enable CORS with our custom configuration
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
 
                 .authorizeHttpRequests(auth -> auth
+
+                        // Public
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/vendor/debug/**").permitAll()
 
-                        .requestMatchers("/api/admin/audit/**")
-                        .hasAnyRole("SYSTEM_ADMIN", "SHOP_OWNER", "AUDITOR")
-
-                        .requestMatchers("/api/admin/**")
-                        .hasAnyRole("SHOP_OWNER", "SYSTEM_ADMIN")
-
+                        // Vendor Portal (Vendor ONLY)
                         .requestMatchers("/api/vendor-portal/**")
                         .hasRole("VENDOR")
 
+                        // Vendor Management (internal admin/inventory only)
                         .requestMatchers("/api/vendor/**")
                         .hasAnyRole("SHOP_OWNER", "INVENTORY_MANAGER", "SYSTEM_ADMIN")
 
-                        .requestMatchers("/api/inventory/**", "/api/sales/**", "/api/purchase-order/**")
-                        .hasAnyRole("SHOP_OWNER", "INVENTORY_MANAGER", "SALES_EXECUTIVE", "SYSTEM_ADMIN")
+                        // Sales Module
+                        .requestMatchers("/api/sales/**")
+                        .hasAnyRole("SHOP_OWNER", "SALES_EXECUTIVE", "SYSTEM_ADMIN")
 
+                        // Inventory Module
+                        .requestMatchers("/api/inventory/**")
+                        .hasAnyRole("SHOP_OWNER", "INVENTORY_MANAGER", "SYSTEM_ADMIN","SALES_EXECUTIVE")
+
+                        // Purchase Orders
+                        .requestMatchers("/api/purchase-order/**")
+                        .hasAnyRole("SHOP_OWNER", "INVENTORY_MANAGER", "SYSTEM_ADMIN")
+
+                        // Admin
+                        .requestMatchers("/api/admin/**")
+                        .hasAnyRole("SHOP_OWNER", "SYSTEM_ADMIN")
+
+                        .requestMatchers("/api/customers/profile").hasRole("CUSTOMER")
+                        .requestMatchers("/api/customers/stats").hasRole("CUSTOMER")
+                        // Admin endpoints for customer management
+                        .requestMatchers("/api/customers").hasAnyRole("SYSTEM_ADMIN", "SHOP_OWNER", "SALES_EXECUTIVE")
+                        .requestMatchers("/api/customers/**").hasAnyRole("SYSTEM_ADMIN", "SHOP_OWNER", "SALES_EXECUTIVE")
+
+                        .requestMatchers("/api/admin/audit/**")
+                        .hasAnyRole("AUDITOR", "SYSTEM_ADMIN", "SHOP_OWNER")
+
+                        // Everything else
                         .anyRequest().authenticated()
-
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
@@ -73,15 +91,24 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+
+        // Allow your React dev ports
+        configuration.setAllowedOriginPatterns(List.of(
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:5173"
+        ));
+
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true); // allow cookies/auth headers
+        configuration.setAllowCredentials(true); // works with allowedOriginPatterns
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
+
 
     @Bean
     public AuthenticationProvider authenticationProvider() {

@@ -12,10 +12,15 @@ import SalesTerminal from "./pages/SalesTerminal";
 import Inventory from "./pages/Inventory";
 import Vendors from "./pages/Vendors";
 import VendorPortal from "./pages/VendorPortal";
+import VendorProducts from "./pages/VendorProducts";
 import SystemSettings from "./pages/SystemSettings";
 import AuditLogs from "./pages/AuditLogs";
 import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
+// Import Report Pages
+import SalesReport from "./pages/reports/SalesReport";
+import InventoryReport from "./pages/reports/InventoryReport";
+import VendorReport from "./pages/reports/VendorReport";
 
 const queryClient = new QueryClient();
 
@@ -35,7 +40,7 @@ const App = () => (
             <Route
               path="/dashboard"
               element={
-                <ProtectedRoute allowedRoles={['SHOP_OWNER', 'INVENTORY_MANAGER', 'SALES_EXECUTIVE', 'SYSTEM_ADMIN']}>
+                <ProtectedRoute allowedRoles={['SHOP_OWNER', 'INVENTORY_MANAGER', 'SALES_EXECUTIVE', 'SYSTEM_ADMIN','VENDOR', 'AUDITOR', 'CUSTOMER']}>
                   <Dashboard />
                 </ProtectedRoute>
               }
@@ -73,6 +78,14 @@ const App = () => (
               }
             />
             <Route
+              path="/vendor/products"
+              element={
+                <ProtectedRoute allowedRoles={['VENDOR']}>
+                  <VendorProducts />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/settings"
               element={
                 <ProtectedRoute allowedRoles={['SHOP_OWNER', 'SYSTEM_ADMIN']}>
@@ -97,6 +110,32 @@ const App = () => (
               }
             />
             
+            {/* Report Routes */}
+            <Route
+              path="/reports/SalesReport"
+              element={
+                <ProtectedRoute allowedRoles={['SALES_EXECUTIVE', 'SHOP_OWNER', 'SYSTEM_ADMIN']}>
+                  <SalesReport />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports/InventoryReport"
+              element={
+                <ProtectedRoute allowedRoles={['INVENTORY_MANAGER', 'SHOP_OWNER', 'SYSTEM_ADMIN']}>
+                  <InventoryReport />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/reports/VendorReport"
+              element={
+                <ProtectedRoute allowedRoles={['VENDOR', 'INVENTORY_MANAGER', 'SHOP_OWNER', 'SYSTEM_ADMIN']}>
+                  <VendorReport />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

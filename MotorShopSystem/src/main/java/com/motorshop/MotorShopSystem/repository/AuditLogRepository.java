@@ -9,6 +9,8 @@ import java.util.List;
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     // Custom queries for the Auditor/Admin
     List<AuditLog> findByEntityTypeAndEntityIdOrderByTimestampDesc(String entityType, Long entityId);
-    List<AuditLog> findByActionTypeOrderByTimestampDesc(String actionType);
+   // List<AuditLog> findByActionTypeOrderByTimestampDesc(String action);
 
 }
+
+

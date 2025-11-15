@@ -1,6 +1,7 @@
 package com.motorshop.MotorShopSystem.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore; // Import to prevent recursion
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,7 +27,8 @@ public class PurchaseOrderItem {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "part_id", nullable = false)
-    private Part part; // The part being ordered
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Part part;
 
     private Integer quantityOrdered;
     private Double unitCost; // Cost paid to the vendor for this part
